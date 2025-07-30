@@ -1,11 +1,11 @@
-// osモジュールをインポートに追加
+// モジュールインポート
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const ffmpeg = require('fluent-ffmpeg');
 const { shell } = require('electron');
 const { exec } = require('child_process');
-const os = require('os'); // 追加
+const os = require('os');
 
 // Windows用FFmpegパス設定（exe化対応）
 let ffmpegPath, ffprobePath;
@@ -59,7 +59,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js')
     },
     show: false,
-    icon: path.join(__dirname, 'icon.ico') // アイコンがある場合
+    icon: path.join(__dirname, 'icon.ico')
   });
 
   mainWindow.loadFile('index.html');
@@ -132,7 +132,7 @@ ipcMain.handle('select-output-folder', async () => {
   return result.canceled ? null : result.filePaths[0];
 });
 
-// 動画の長さとファイルサイズを取得（エラーハンドリング強化版）
+// 動画の長さとファイルサイズを取得
 ipcMain.handle('get-video-info', async (event, filePath) => {
   console.log('=== get-video-info called ===');
   console.log('File path:', filePath);
