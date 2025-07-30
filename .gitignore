@@ -1,0 +1,43 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Electron
+dist/
+*.log
+
+# FFmpeg バイナリ (セットアップスクリプトで自動ダウンロード)
+ffmpeg/
+!ffmpeg/.gitkeep
+
+# 一時ファイル
+temp_list*.txt
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Windows
+*.exe
+*.msi
+*.cab
+*.msm
+*.msp
+
+# 環境設定
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

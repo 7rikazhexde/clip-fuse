@@ -1,0 +1,26 @@
+{
+  "defaultVersion": "7.1.1",
+  "recommendedVersion": "7.1.1",
+  "supportedVersions": {
+    "7.1.1": {
+      "url": "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
+      "description": "推奨バージョン - 最新安定版、最高のパフォーマンス",
+      "stability": "recommended"
+    },
+    "7.0.2": {
+      "url": "https://github.com/GyanD/codexffmpeg/releases/download/7.0.2/ffmpeg-7.0.2-essentials_build.zip",
+      "description": "フォールバック版 - 7.1.1で問題がある場合のみ使用",
+      "stability": "stable"
+    }
+  },
+  "downloadSettings": {
+    "timeout": 300,
+    "retryCount": 3,
+    "userAgent": "PowerShell/VideoMerger"
+  },
+  "paths": {
+    "tempDir": "temp",
+    "ffmpegDir": "ffmpeg",
+    "backupDir": "ffmpeg-backup"
+  }
+}

@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Clip Fuse</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎬 Clip Fuse</h1>
+            <p>動画ファイルをドラッグ&ドロップまたは選択して結合</p>
+        </header>
+
+        <main>
+            <div class="add-files-section">
+                <div id="dropZone" class="drop-zone">
+                    <div class="drop-zone-content">
+                        <div class="drop-icon">📁</div>
+                        <p>動画ファイルをここにドラッグ&ドロップ</p>
+                        <button id="selectFilesBtn" class="btn btn-primary">ファイルを選択</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="file-list-section">
+                <div class="section-header">
+                    <h3>結合するファイル (ドラッグして順序変更)</h3>
+                    <div class="controls">
+                        <button id="clearAllBtn" class="btn btn-secondary">全てクリア</button>
+                        <span id="totalDuration" class="total-duration">総時間: 00:00:00</span>
+                    </div>
+                </div>
+                <ul id="fileList" class="file-list"></ul>
+            </div>
+
+            <div class="merge-section">
+                <div class="output-section">
+                    <div class="output-filename">
+                        <label for="outputFilename">出力ファイル名:</label>
+                        <input type="text" id="outputFilename" value="merged_video" placeholder="ファイル名を入力">
+                        <span class="file-extension">.mp4</span>
+                    </div>
+                    <div class="output-selection">
+                        <button id="selectOutputBtn" class="btn btn-secondary">保存先フォルダを選択</button>
+                        <span id="outputPath" class="output-path">保存先未選択</span>
+                    </div>
+                    <div class="output-preview" id="outputPreview" style="display: none;">
+                        <span class="preview-label">保存先:</span>
+                        <span id="fullOutputPath" class="full-path"></span>
+                    </div>
+                </div>
+                <button id="mergeBtn" class="btn btn-success btn-large" disabled>動画を結合</button>
+            </div>
+
+            <div id="progressBanner" class="progress-banner" style="display: none;">
+                <div class="banner-content">
+                    <div class="banner-icon">🎬</div>
+                    <div class="banner-text">
+                        <div class="banner-title">動画を結合中...</div>
+                        <div class="banner-details">
+                            <span id="bannerProgress">処理中...</span>
+                        </div>
+                    </div>
+                </div>
+                <button id="cancelBtn" class="cancel-btn" title="キャンセル">✕</button>
+            </div>
+
+            <div id="progressSection" class="progress-section" style="display: none;">
+                <div class="progress-info">
+                    <h4>結合中...</h4>
+                    <div class="progress-details">
+                        <span id="progressPercent">0%</span>
+                        <span id="progressTime">00:00:00</span>
+                        <span id="progressFps">0 fps</span>
+                    </div>
+                </div>
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let videoFiles = [];
+        let outputPath = '';
+        let sortable;
+
+        // DOM要素
+        const dropZone = document.getElementById('dropZone');
+        const selectFilesBtn = document.getElementById('selectFilesBtn');
+        const fileList = document.getElementById('fileList');
+        const clearAllBtn = document.getElementById('clearAllBtn');
+        const selectOutputBtn = document.getElementById('selectOutputBtn');
+        const outputPathSpan = document.getElementById('outputPath');
+        const outputFilename = document.getElementById('outputFilename');
+        const outputPreview = document.getElementById('outputPreview');
+        const fullOutputPath = document.getElementById('fullOutputPath');
+        const mergeBtn = document.getElementById('mergeBtn');
+        const progressSection = document.getElementById('progressSection');
+        const progressBanner = document.getElementById('progressBanner');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const totalDurationSpan = document.getElementById('totalDuration');
+
+        // 結合処理の状態管理（ファイルサイズベース）
+        let mergeState = 'idle'; // 'idle', 'processing', 'completed', 'cancelling'
+        let currentOutputPath = '';
+        let mergeController = null;
+        let totalDurationSeconds = 0;
+        let totalInputSize = 0; // 総入力ファイルサイズ
+        let mergeStartTime = 0;
+        
+        // ファイルサイズベース進捗監視
+        let progressMonitorInterval = null;
+
+        // Sortable.jsの初期化
+        function initSortable() {
+            if (sortable) {
+                sortable.destroy();
+            }
+            sortable = Sortable.create(fileList, {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onEnd: function(evt) {
+                    const item = videoFiles.splice(evt.oldIndex, 1)[0];
+                    videoFiles.splice(evt.newIndex, 0, item);
+                    updateTotalDuration();
+                }
+            });
+        }
+
+        // ドラッグ&ドロップ処理（Windows最適化版）
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!dropZone.contains(e.relatedTarget)) {
+                dropZone.classList.remove('drag-over');
+            }
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove('drag-over');
+            
+            console.log('Drop event triggered');
+            
+            const files = Array.from(e.dataTransfer.files);
+            console.log('Total files dropped:', files.length);
+            
+            // フォルダとファイルを分別
+            const videoFiles = [];
+            const folders = [];
+            
+            files.forEach((file, index) => {
+                console.log(`Item ${index + 1}:`, {
+                    name: file.name,
+                    type: file.type,
+                    size: file.size,
+                    path: file.path
+                });
+                
+                // フォルダかファイルかを判定
+                if (file.type === '' && file.size === 0) {
+                    // フォルダの可能性
+                    folders.push(file);
+                } else {
+                    // ファイルの場合
+                    const isVideoType = file.type.startsWith('video/');
+                    const isVideoExtension = /\.(mp4|avi|mov|mkv|flv|wmv|m4v|webm)$/i.test(file.name);
+                    
+                    if (isVideoType || isVideoExtension) {
+                        videoFiles.push(file);
+                    }
+                }
+            });
+            
+            console.log('Video files found:', videoFiles.length);
+            console.log('Folders found:', folders.length);
+            
+            if (videoFiles.length > 0) {
+                const filePaths = videoFiles.map(file => file.path || file.name);
+                console.log('Video file paths:', filePaths);
+                addFiles(filePaths);
+            }
+            
+            if (folders.length > 0) {
+                console.log('Folders detected:', folders.map(f => f.name));
+                alert(`フォルダが検出されました: ${folders.map(f => f.name).join(', ')}\n\nフォルダ内のファイルを追加するには、フォルダを開いて動画ファイルを直接選択してください。`);
+            }
+            
+            if (videoFiles.length === 0 && folders.length === 0) {
+                alert('動画ファイルが見つかりませんでした。対応形式: mp4, avi, mov, mkv, flv, wmv, m4v, webm');
+            }
+        });
+
+        // ファイル選択ボタン
+        selectFilesBtn.addEventListener('click', async () => {
+            const filePaths = await window.electronAPI.selectFiles();
+            if (filePaths.length > 0) {
+                addFiles(filePaths);
+            }
+        });
+
+        // ファイル追加（ファイルサイズも取得）
+        async function addFiles(filePaths) {
+            for (const filePath of filePaths) {
+                try {
+                    const videoInfo = await window.electronAPI.getVideoInfo(filePath);
+                    const fileName = filePath.split('\\').pop() || filePath.split('/').pop();
+                    
+                    // 表示名の重複管理（ユニークな表示名を生成）
+                    let displayName = fileName;
+                    let counter = 1;
+                    
+                    // 既存のファイルリストで同じ表示名があるかチェック
+                    while (videoFiles.find(f => f.name === displayName)) {
+                        const nameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
+                        const extension = fileName.match(/\.[^/.]+$/)?.[0] || "";
+                        displayName = `${nameWithoutExt} (${counter})${extension}`;
+                        counter++;
+                    }
+                    
+                    // ユニークIDを生成（内部管理用）
+                    const uniqueId = Date.now() + Math.random();
+                    
+                    videoFiles.push({
+                        id: uniqueId,          // 内部識別用ID
+                        path: filePath,
+                        name: displayName,     // 表示用名前
+                        originalName: fileName, // 元のファイル名
+                        duration: videoInfo.duration,
+                        size: videoInfo.size,  // ファイルサイズを追加
+                        addedAt: new Date()    // 追加日時
+                    });
+                    
+                    console.log(`Added file: ${displayName} (${filePath}) [ID: ${uniqueId}] Size: ${videoInfo.size} bytes`);
+                } catch (error) {
+                    console.error('動画情報の取得に失敗:', error);
+                    const fileName = filePath.split('\\').pop() || filePath.split('/').pop();
+                    
+                    // エラーの場合も同様に処理
+                    let displayName = fileName;
+                    let counter = 1;
+                    
+                    while (videoFiles.find(f => f.name === displayName)) {
+                        const nameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
+                        const extension = fileName.match(/\.[^/.]+$/)?.[0] || "";
+                        displayName = `${nameWithoutExt} (${counter})${extension}`;
+                        counter++;
+                    }
+                    
+                    const uniqueId = Date.now() + Math.random();
+                    
+                    videoFiles.push({
+                        id: uniqueId,
+                        path: filePath,
+                        name: displayName,
+                        originalName: fileName,
+                        duration: 0,
+                        size: 0, // エラー時はサイズ0
+                        addedAt: new Date(),
+                        hasError: true
+                    });
+                    
+                    console.log(`Added file with error: ${displayName} (${filePath}) [ID: ${uniqueId}]`);
+                }
+            }
+            updateFileList();
+            updateTotalDuration();
+            updateMergeButton();
+        }
+
+        // ファイルリスト更新
+        function updateFileList() {
+            fileList.innerHTML = '';
+            videoFiles.forEach((file, index) => {
+                const li = document.createElement('li');
+                li.className = 'file-item';
+                li.innerHTML = `
+                    <div class="file-info">
+                        <div class="drag-handle">⋮⋮</div>
+                        <div class="file-details">
+                            <div class="file-name" title="${file.path}">${file.name}</div>
+                            <div class="file-duration">${formatDuration(file.duration)}</div>
+                            <div class="file-path">${file.path}</div>
+                            ${file.hasError ? '<div class="file-error">⚠️ 読み込みエラー</div>' : ''}
+                        </div>
+                    </div>
+                    <button class="remove-btn" onclick="removeFile(${index})" title="削除">×</button>
+                `;
+                fileList.appendChild(li);
+            });
+            initSortable();
+        }
+
+        // ファイル削除
+        function removeFile(index) {
+            videoFiles.splice(index, 1);
+            updateFileList();
+            updateTotalDuration();
+            updateMergeButton();
+        }
+
+        // 全てクリア
+        clearAllBtn.addEventListener('click', () => {
+            videoFiles = [];
+            updateFileList();
+            updateTotalDuration();
+            updateMergeButton();
+        });
+
+        // 総時間とサイズ更新
+        function updateTotalDuration() {
+            const totalDuration = videoFiles.reduce((sum, file) => sum + (file.duration || 0), 0);
+            const totalSize = videoFiles.reduce((sum, file) => sum + (file.size || 0), 0);
+            
+            totalDurationSeconds = totalDuration;
+            totalInputSize = totalSize; // 総入力サイズを保存
+            
+            totalDurationSpan.textContent = `総時間: ${formatDuration(totalDuration)} (${formatFileSize(totalSize)})`;
+        }
+
+        // ファイルサイズをフォーマット
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        // 時間フォーマット
+        function formatDuration(seconds) {
+            if (!seconds) return '00:00:00';
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // 保存先フォルダ選択
+        selectOutputBtn.addEventListener('click', async () => {
+            const folderPath = await window.electronAPI.selectOutputFolder();
+            if (folderPath) {
+                outputPath = folderPath;
+                outputPathSpan.textContent = folderPath.split('\\').pop() || folderPath.split('/').pop();
+                outputPathSpan.title = folderPath;
+                updateOutputPreview();
+                updateMergeButton();
+            }
+        });
+
+        // ファイル名入力の変更監視
+        outputFilename.addEventListener('input', () => {
+            updateOutputPreview();
+        });
+
+        // 出力先プレビューの更新
+        function updateOutputPreview() {
+            if (outputPath && outputFilename.value.trim()) {
+                const filename = sanitizeFilename(outputFilename.value.trim()) + '.mp4';
+                const fullPath = outputPath + '\\' + filename;
+                fullOutputPath.textContent = fullPath;
+                fullOutputPath.title = fullPath;
+                outputPreview.style.display = 'block';
+            } else {
+                outputPreview.style.display = 'none';
+            }
+        }
+
+        // ファイル名のサニタイズ（無効な文字を除去）
+        function sanitizeFilename(filename) {
+            // Windowsで使用できない文字を除去
+            return filename.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_');
+        }
+
+        // 結合ボタンの状態更新
+        function updateMergeButton() {
+            const hasFiles = videoFiles.length >= 2;
+            const hasOutputPath = outputPath && outputFilename.value.trim();
+            mergeBtn.disabled = !hasFiles || !hasOutputPath;
+        }
+
+        // 状態とUIを完全にリセット（元に戻す）
+        function resetMergeState() {
+            console.log('=== 状態リセット ===', 'from:', mergeState, 'to: idle');
+            mergeState = 'idle';
+            // currentOutputPathは保持（完了後のキャンセルのため）
+            mergeController = null;
+            mergeBtn.disabled = false;
+            hideProgressBanner();
+            updateMergeButton();
+        }
+
+        // 完全な初期化（パス保持版）
+        function fullReset() {
+            console.log('=== 完全初期化（パス保持）===');
+            mergeState = 'idle';
+            // currentOutputPath = ''; // パスを保持
+            mergeController = null;
+            mergeBtn.disabled = false;
+            hideProgressBanner();
+            updateMergeButton();
+        }
+
+        // 新しい結合処理開始時のみの完全リセット
+        function completeReset() {
+            console.log('=== 新規処理用完全リセット ===');
+            mergeState = 'idle';
+            currentOutputPath = '';
+            mergeController = null;
+            mergeBtn.disabled = false;
+            hideProgressBanner();
+            updateMergeButton();
+        }
+
+        // 結合実行
+        mergeBtn.addEventListener('click', async () => {
+            if (videoFiles.length < 2 || !outputPath || !outputFilename.value.trim()) return;
+            if (mergeState !== 'idle') return; // 処理中は実行しない
+
+            const filename = sanitizeFilename(outputFilename.value.trim()) + '.mp4';
+            const fullOutputPath = outputPath + '\\' + filename;
+
+            // ファイルの存在確認
+            const fileExists = await window.electronAPI.checkFileExists(fullOutputPath);
+            
+            if (fileExists) {
+                const userChoice = await showOverwriteDialog(filename);
+                if (userChoice === 'cancel') {
+                    return;
+                } else if (userChoice === 'rename') {
+                    const newFilename = await generateUniqueFilename(outputPath, outputFilename.value.trim());
+                    outputFilename.value = newFilename;
+                    updateOutputPreview();
+                    return;
+                }
+            }
+
+            // 処理開始
+            console.log('=== 結合処理開始 ===');
+            mergeState = 'processing';
+            currentOutputPath = fullOutputPath;
+            mergeController = new AbortController();
+            mergeStartTime = Date.now(); // 開始時刻を記録
+            
+            console.log('処理開始時のcurrentOutputPath設定:', currentOutputPath);
+            console.log('総入力サイズ:', formatFileSize(totalInputSize));
+            
+            // UI更新
+            mergeBtn.disabled = true;
+            showProgressBanner();
+            resetBannerDisplay(); // バナー表示をリセット
+            
+            // ファイルサイズベース進捗監視を開始
+            startProgressMonitoring(fullOutputPath);
+
+            try {
+                const filePaths = videoFiles.map(f => f.path);
+                console.log('Starting merge with files:', filePaths);
+                
+                const result = await window.electronAPI.mergeVideos(filePaths, fullOutputPath);
+                
+                // 進捗監視を停止
+                stopProgressMonitoring();
+                
+                // 正常完了の処理（常に成功ダイアログを表示）
+                if (mergeState === 'processing') {
+                    console.log('=== 結合処理正常完了 ===');
+                    mergeState = 'completed';
+                    hideProgressBanner();
+                    showSuccessMessage(fullOutputPath);
+                } else if (mergeState === 'cancelling') {
+                    console.log('=== キャンセル中に処理完了 - ファイル削除実行 ===');
+                    try {
+                        await window.electronAPI.forceDeleteFile(fullOutputPath);
+                        console.log('キャンセル処理完了後ファイル削除成功');
+                        completeReset();
+                    } catch (deleteError) {
+                        console.error('キャンセル処理完了後ファイル削除失敗:', deleteError);
+                        completeReset();
+                        alert('ファイル削除でエラーが発生しました: ' + deleteError.message);
+                    }
+                } else {
+                    console.log('=== 不明な状態での完了 ===', mergeState);
+                    completeReset();
+                }
+            } catch (error) {
+                console.error('=== 結合処理エラー ===', error);
+                
+                // 進捗監視を停止
+                stopProgressMonitoring();
+                
+                // キャンセル以外のエラーのみ表示
+                if (mergeState !== 'cancelling') {
+                    resetMergeState();
+                    alert('エラーが発生しました: ' + (error.message || '不明なエラー'));
+                } else {
+                    console.log('=== キャンセルによるエラー（正常） ===');
+                    completeReset();
+                }
+            }
+        });
+
+        // 状態とUIを完全にリセット
+        function resetMergeState() {
+            console.log('=== 状態リセット ===', 'from:', mergeState, 'to: idle');
+            mergeState = 'idle';
+            // currentOutputPathは保持（完了後のキャンセルのため）
+            mergeController = null;
+            mergeBtn.disabled = false;
+            hideProgressBanner();
+            updateMergeButton();
+        }
+
+        // 完全な初期化（修正版 - currentOutputPathを保持）
+        function fullReset() {
+            console.log('=== 完全初期化 ===');
+            console.log('リセット前のcurrentOutputPath:', currentOutputPath);
+            mergeState = 'idle';
+            // currentOutputPath = ''; // この行をコメントアウト（パスを保持）
+            mergeController = null;
+            mergeBtn.disabled = false;
+            hideProgressBanner();
+            updateMergeButton();
+            console.log('リセット後のcurrentOutputPath:', currentOutputPath);
+        }
+
+        // バナー表示をリセット（ファイルサイズベース）
+        function resetBannerDisplay() {
+            document.querySelector('.banner-title').textContent = '動画を結合中...';
+            document.querySelector('.banner-icon').textContent = '🎬';
+            document.getElementById('bannerProgress').textContent = '処理中...';
+        }
+
+        // ファイルサイズベース進捗監視を開始
+        function startProgressMonitoring(outputPath) {
+            console.log('=== ファイルサイズベース進捗監視開始 ===');
+            console.log('出力ファイル:', outputPath);
+            console.log('総入力サイズ:', formatFileSize(totalInputSize));
+            
+            if (progressMonitorInterval) {
+                clearInterval(progressMonitorInterval);
+            }
+            
+            progressMonitorInterval = setInterval(async () => {
+                if (mergeState !== 'processing') {
+                    console.log('進捗監視停止: 状態が変更されました');
+                    clearInterval(progressMonitorInterval);
+                    progressMonitorInterval = null;
+                    return;
+                }
+                
+                try {
+                    const currentSize = await window.electronAPI.getFileSize(outputPath);
+                    
+                    if (currentSize > 0 && totalInputSize > 0) {
+                        // 進捗率を計算（出力ファイルは通常入力より小さくなる可能性があるため上限を110%に）
+                        const progressPercent = Math.min(110, Math.round((currentSize / totalInputSize) * 100));
+                        const displayPercent = Math.min(100, progressPercent);
+                        
+                        // 残り時間の推定
+                        const elapsedTime = (Date.now() - mergeStartTime) / 1000;
+                        let displayText;
+                        
+                        if (displayPercent >= 100) {
+                            displayText = '100% (完了処理中...)';
+                        } else if (displayPercent >= 95) {
+                            displayText = `${displayPercent}% (まもなく完了...)`;
+                        } else if (elapsedTime > 5 && displayPercent > 5) {
+                            const estimatedTotalTime = (elapsedTime / displayPercent) * 100;
+                            const remainingTime = Math.max(0, estimatedTotalTime - elapsedTime);
+                            
+                            if (remainingTime < 7200) { // 2時間以内
+                                displayText = `${displayPercent}% (残り約${formatDuration(remainingTime)})`;
+                            } else {
+                                displayText = `${displayPercent}% (処理中...)`;
+                            }
+                        } else {
+                            displayText = `${displayPercent}% (処理中...)`;
+                        }
+                        
+                        console.log(`進捗更新: ${displayText} (出力: ${formatFileSize(currentSize)} / 入力: ${formatFileSize(totalInputSize)})`);
+                        
+                        // バナー更新
+                        document.getElementById('bannerProgress').textContent = displayText;
+                    } else {
+                        document.getElementById('bannerProgress').textContent = '0% (開始中...)';
+                    }
+                } catch (error) {
+                    console.warn('ファイルサイズ取得エラー:', error);
+                }
+            }, 1000); // 1秒間隔で監視
+        }
+
+        // 進捗監視を停止
+        function stopProgressMonitoring() {
+            if (progressMonitorInterval) {
+                clearInterval(progressMonitorInterval);
+                progressMonitorInterval = null;
+                console.log('進捗監視を停止しました');
+            }
+        }
+
+        // キャンセルボタンの処理（修正版 - パス保持確認）
+        cancelBtn.addEventListener('click', async () => {
+            console.log('=== キャンセルボタン押下 ===');
+            console.log('現在の状態:', mergeState);
+            console.log('currentOutputPath:', currentOutputPath);
+            
+            // キャンセル対象がない場合は何もしない
+            if (!currentOutputPath) {
+                console.log('キャンセル対象なし - currentOutputPathが空');
+                alert('削除対象のファイルが指定されていません。');
+                return;
+            }
+            
+            if (mergeState === 'cancelling') {
+                console.log('既にキャンセル中');
+                return;
+            }
+
+            // キャンセル確認ダイアログを表示
+            const confirmCancel = await showCancelDialog();
+            
+            if (confirmCancel) {
+                console.log('=== キャンセル確定 - 削除実行 ===');
+                console.log('削除対象パス:', currentOutputPath);
+                
+                // どの状態でもキャンセルボタン押下時は削除実行
+                mergeState = 'cancelling';
+                await executeFileDelete(currentOutputPath);
+            } else {
+                console.log('=== キャンセル取り消し ===');
+                // 何もしない
+            }
+        });
+
+        // ファイル削除の実行（修正版 - 削除成功時のリセット処理修正）
+        async function executeFileDelete(filePath) {
+            console.log('=== ファイル削除実行開始 ===');
+            console.log('引数で受け取ったパス:', filePath);
+            console.log('currentOutputPath:', currentOutputPath);
+            
+            // パスが空の場合のフォールバック
+            const targetPath = filePath || currentOutputPath;
+            
+            if (!targetPath) {
+                console.error('削除対象ファイルパスが空です');
+                alert('削除対象のファイルが指定されていません。\n\ncurrentOutputPath: ' + currentOutputPath + '\nfilePath: ' + filePath);
+                return;
+            }
+            
+            console.log('実際に削除するパス:', targetPath);
+            
+            // 削除処理開始
+            showProgressBanner();
+            document.querySelector('.banner-title').textContent = 'ファイルを削除中...';
+            document.querySelector('.banner-icon').textContent = '🗑️';
+            document.getElementById('bannerProgress').textContent = '削除処理中...';
+            
+            try {
+                console.log('=== ファイル削除API呼び出し ===');
+                const deleteResult = await window.electronAPI.forceDeleteFile(targetPath);
+                console.log('削除結果:', deleteResult);
+                
+                hideProgressBanner();
+                
+                if (deleteResult && deleteResult.success) {
+                    console.log('ファイル削除成功');
+                    // 削除成功時は完全リセット（パスもクリア）
+                    completeReset();
+                    //alert('ファイルを削除しました。');
+                } else {
+                    console.error('ファイル削除失敗:', deleteResult);
+                    resetMergeState();
+                    const errorMessage = deleteResult?.error || '不明なエラーが発生しました';
+                    showDeleteErrorDialog(targetPath, errorMessage);
+                }
+            } catch (error) {
+                console.error('ファイル削除API呼び出しエラー:', error);
+                hideProgressBanner();
+                resetMergeState();
+                showDeleteErrorDialog(targetPath, error.message || '削除処理中にエラーが発生しました');
+            }
+        }
+
+        // 削除エラー専用ダイアログ
+        function showDeleteErrorDialog(filePath, errorMessage) {
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content error-modal">
+                    <div class="modal-header">
+                        <h3>⚠️ ファイル削除エラー</h3>
+                    </div>
+                    <div class="modal-body">
+                        <p>ファイルの削除に失敗しました。</p>
+                        <div class="error-details">
+                            <strong>ファイル:</strong><br>
+                            <code>${filePath}</code><br><br>
+                            <strong>エラー:</strong><br>
+                            <span class="error-message">${errorMessage}</span>
+                        </div>
+                        <div class="manual-delete-info">
+                            <h4>手動での削除方法:</h4>
+                            <ol>
+                                <li>ファイルを使用している他のプログラムを終了</li>
+                                <li>エクスプローラーでファイルを右クリック → 削除</li>
+                                <li>管理者権限でコマンドプロンプトを開き:<br>
+                                    <code>del /f "${filePath}"</code></li>
+                            </ol>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn btn-primary" id="openErrorFolderBtn">フォルダを開く</button>
+                        <button class="btn btn-secondary" id="closeErrorBtn">閉じる</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            document.getElementById('openErrorFolderBtn').onclick = async () => {
+                await window.electronAPI.showInFolder(filePath);
+                document.body.removeChild(modal);
+            };
+            
+            document.getElementById('closeErrorBtn').onclick = () => {
+                document.body.removeChild(modal);
+            };
+            
+            modal.onclick = (e) => {
+                if (e.target === modal) {
+                    document.body.removeChild(modal);
+                }
+            };
+        }
+
+        // キャンセル確認ダイアログ（シンプル版）
+        function showCancelDialog() {
+            return new Promise((resolve) => {
+                const modal = document.createElement('div');
+                modal.className = 'modal-overlay';
+                modal.innerHTML = `
+                    <div class="modal-content cancel-modal">
+                        <div class="modal-header">
+                            <h3>⚠️ ファイルを削除しますか？</h3>
+                        </div>
+                        <div class="modal-body">
+                            <p>作成されたファイルを削除します。</p>
+                            <p class="warning-text">この操作は取り消せません。</p>
+                        </div>
+                        <div class="modal-actions">
+                            <button class="btn btn-danger" id="confirmCancelBtn">削除する</button>
+                            <button class="btn btn-secondary" id="continueMergeBtn">キャンセル</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                document.getElementById('confirmCancelBtn').onclick = () => {
+                    document.body.removeChild(modal);
+                    resolve(true);
+                };
+                
+                document.getElementById('continueMergeBtn').onclick = () => {
+                    document.body.removeChild(modal);
+                    resolve(false);
+                };
+                
+                // ESCキーでキャンセル
+                const handleKeyDown = (e) => {
+                    if (e.key === 'Escape') {
+                        document.body.removeChild(modal);
+                        document.removeEventListener('keydown', handleKeyDown);
+                        resolve(false);
+                    }
+                };
+                document.addEventListener('keydown', handleKeyDown);
+                
+                // モーダル外クリックはキャンセル扱い
+                modal.onclick = (e) => {
+                    if (e.target === modal) {
+                        document.body.removeChild(modal);
+                        document.removeEventListener('keydown', handleKeyDown);
+                        resolve(false);
+                    }
+                };
+            });
+        }
+
+        // 上書き確認ダイアログ
+        function showOverwriteDialog(filename) {
+            return new Promise((resolve) => {
+                const modal = document.createElement('div');
+                modal.className = 'modal-overlay';
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>⚠️ ファイルが既に存在します</h3>
+                        </div>
+                        <div class="modal-body">
+                            <p><strong>${filename}</strong> は既に存在しています。</p>
+                            <p>どのように処理しますか？</p>
+                        </div>
+                        <div class="modal-actions">
+                            <button class="btn btn-danger" id="overwriteBtn">上書きする</button>
+                            <button class="btn btn-secondary" id="renameBtn">名前を変更</button>
+                            <button class="btn btn-outline" id="cancelOverwriteBtn">キャンセル</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                document.getElementById('overwriteBtn').onclick = () => {
+                    document.body.removeChild(modal);
+                    resolve('overwrite');
+                };
+                
+                document.getElementById('renameBtn').onclick = () => {
+                    document.body.removeChild(modal);
+                    resolve('rename');
+                };
+                
+                document.getElementById('cancelOverwriteBtn').onclick = () => {
+                    document.body.removeChild(modal);
+                    resolve('cancel');
+                };
+                
+                // ESCキーでキャンセル
+                const handleKeyDown = (e) => {
+                    if (e.key === 'Escape') {
+                        document.body.removeChild(modal);
+                        document.removeEventListener('keydown', handleKeyDown);
+                        resolve('cancel');
+                    }
+                };
+                document.addEventListener('keydown', handleKeyDown);
+                
+                // モーダル外クリックでキャンセル
+                modal.onclick = (e) => {
+                    if (e.target === modal) {
+                        document.body.removeChild(modal);
+                        document.removeEventListener('keydown', handleKeyDown);
+                        resolve('cancel');
+                    }
+                };
+            });
+        }
+
+        // ユニークなファイル名を生成（正しい連番処理）
+        async function generateUniqueFilename(folderPath, baseName) {
+            let counter = 1;
+            let newName;
+            
+            // 既存の連番を検出して次の番号を生成
+            const existingFiles = [];
+            
+            // (1), (2) などの番号が付いたファイルを検索
+            while (true) {
+                const testName = `${baseName} (${counter})`;
+                const testPath = folderPath + '\\' + sanitizeFilename(testName) + '.mp4';
+                
+                if (await window.electronAPI.checkFileExists(testPath)) {
+                    existingFiles.push(counter);
+                    counter++;
+                } else {
+                    // 存在しない番号が見つかった
+                    newName = testName;
+                    break;
+                }
+                
+                // 無限ループ防止
+                if (counter > 1000) {
+                    newName = `${baseName} (${Date.now()})`;
+                    break;
+                }
+            }
+            
+            console.log('Generated unique filename:', newName);
+            return newName;
+        }
+
+        // 進捗バナー表示
+        function showProgressBanner() {
+            progressBanner.style.display = 'flex';
+            progressBanner.classList.add('banner-show');
+            
+            // バナーを少し遅らせてアニメーション
+            setTimeout(() => {
+                progressBanner.classList.add('banner-animate');
+            }, 100);
+        }
+
+        // 進捗バナー非表示
+        function hideProgressBanner() {
+            progressBanner.classList.remove('banner-animate');
+            setTimeout(() => {
+                progressBanner.style.display = 'none';
+                progressBanner.classList.remove('banner-show');
+            }, 300);
+        }
+
+        // 成功メッセージ（元の形に戻す）
+        function showSuccessMessage(filePath) {
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content success-modal">
+                    <div class="modal-header">
+                        <h3>✅ 結合完了!</h3>
+                    </div>
+                    <div class="modal-body">
+                        <p>動画の結合が正常に完了しました。</p>
+                        <div class="file-path-display">
+                            <strong>保存先:</strong><br>
+                            <code>${filePath}</code>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn btn-primary" id="openFolderBtn">フォルダを開く</button>
+                        <button class="btn btn-secondary" id="closeSuccessBtn">閉じる</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            document.getElementById('openFolderBtn').onclick = async () => {
+                await window.electronAPI.showInFolder(filePath);
+                document.body.removeChild(modal);
+                // フォルダを開いた後は完全初期化
+                fullReset();
+            };
+            
+            document.getElementById('closeSuccessBtn').onclick = () => {
+                document.body.removeChild(modal);
+                // 閉じるボタンでは削除せず、単純に完全初期化
+                console.log('=== 成功ダイアログ閉じる ===');
+                fullReset();
+            };
+            
+            modal.onclick = (e) => {
+                if (e.target === modal) {
+                    document.body.removeChild(modal);
+                    // モーダル外クリックでも削除せず、単純に完全初期化
+                    console.log('=== 成功ダイアログ外クリック ===');
+                    fullReset();
+                }
+            };
+        }
+
+        // 進捗更新（ファイルサイズベースに変更したため不要だが、フォールバック用に保持）
+        window.electronAPI.onMergeProgress((event, progress) => {
+            // ファイルサイズベース監視をメインとし、これはフォールバック
+            console.log('FFmpeg進捗受信（参考用）:', progress);
+        });
+
+        // timemarkを秒に変換する関数
+        function parseTimemarkToSeconds(timemark) {
+            if (!timemark || timemark === '00:00:00') return 0;
+            
+            try {
+                const parts = timemark.split(':');
+                if (parts.length >= 3) {
+                    const hours = parseInt(parts[0]) || 0;
+                    const minutes = parseInt(parts[1]) || 0;
+                    const seconds = parseFloat(parts[2]) || 0;
+                    return hours * 3600 + minutes * 60 + seconds;
+                }
+            } catch (error) {
+                console.warn('Timemark parse error:', error);
+            }
+            
+            return 0;
+        }
+
+        // 初期化
+        updateMergeButton();
+    </script>
+</body>
+</html>
