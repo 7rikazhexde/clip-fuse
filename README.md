@@ -2,6 +2,12 @@
 
 Windows向けの動画結合アプリケーション。ドラッグ&ドロップで簡単に複数の動画ファイルを結合できます。
 
+<details>
+     <summary>アプリ（キャプチャ）</summary>
+
+![app-capture.png](.demo/app-capture.png)
+</details>
+
 ## 特徴
 
 - 🖱️ **ドラッグ&ドロップ対応**: 直感的な操作で動画ファイルを追加

@@ -17,6 +17,9 @@ ffmpeg/
 temp_list*.txt
 *.tmp
 
+# テストファイル
+test-videos/
+
 # IDE
 .vscode/
 .idea/
