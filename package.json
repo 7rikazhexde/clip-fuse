@@ -8,8 +8,10 @@
     "node": ">=20.15.1"
   },
   "scripts": {
-    "start": "electron .",
-    "dev": "electron . --dev",
+    "start": "chcp 65001 > nul && set NODE_ENV=development && electron .",
+    "start:utf8": "powershell -Command \"[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; npm run electron\"",
+    "electron": "electron .",
+    "dev": "chcp 65001 > nul && set NODE_ENV=development && electron . --dev",
     "build": "electron-builder",
     "dist": "electron-builder",
     "postinstall": "electron-builder install-app-deps"

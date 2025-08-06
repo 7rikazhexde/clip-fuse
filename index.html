@@ -123,10 +123,45 @@
             sortable = Sortable.create(fileList, {
                 animation: 150,
                 ghostClass: 'sortable-ghost',
+                dataIdAttr: 'data-file-id', // データ属性でIDを管理
                 onEnd: function(evt) {
-                    const item = videoFiles.splice(evt.oldIndex, 1)[0];
-                    videoFiles.splice(evt.newIndex, 0, item);
+                    console.log('=== ファイル並び替え ===');
+                    console.log('移動前の位置:', evt.oldIndex);
+                    console.log('移動後の位置:', evt.newIndex);
+                    
+                    // 配列の順序を更新
+                    const movedItem = videoFiles.splice(evt.oldIndex, 1)[0];
+                    videoFiles.splice(evt.newIndex, 0, movedItem);
+                    
+                    // デバッグ: 並び替え後の順序を確認
+                    console.log('並び替え後のファイル順序:');
+                    videoFiles.forEach((file, index) => {
+                        console.log(`  ${index + 1}. ${file.name} (${file.path})`);
+                    });
+                    
+                    // 総時間を更新
                     updateTotalDuration();
+                    
+                    // UIの順序が配列と一致しているか確認（デバッグ用）
+                    verifyFileOrder();
+                }
+            });
+        }
+
+        // ファイル順序の検証（デバッグ用）
+        function verifyFileOrder() {
+            const listItems = fileList.querySelectorAll('.file-item');
+            console.log('=== 順序検証 ===');
+            console.log('配列内のファイル数:', videoFiles.length);
+            console.log('DOM内のファイル数:', listItems.length);
+            
+            listItems.forEach((item, index) => {
+                const fileId = item.getAttribute('data-file-id');
+                const arrayFile = videoFiles[index];
+                if (arrayFile && arrayFile.id.toString() === fileId) {
+                    console.log(`✓ 位置 ${index + 1}: 一致 (${arrayFile.name})`);
+                } else {
+                    console.warn(`✗ 位置 ${index + 1}: 不一致！`);
                 }
             });
         }
@@ -291,6 +326,7 @@
             videoFiles.forEach((file, index) => {
                 const li = document.createElement('li');
                 li.className = 'file-item';
+                li.setAttribute('data-file-id', file.id); // IDをdata属性として設定
                 li.innerHTML = `
                     <div class="file-info">
                         <div class="drag-handle">⋮⋮</div>
@@ -301,8 +337,13 @@
                             ${file.hasError ? '<div class="file-error">⚠️ 読み込みエラー</div>' : ''}
                         </div>
                     </div>
-                    <button class="remove-btn" onclick="removeFile(${index})" title="削除">×</button>
+                    <button class="remove-btn" data-index="${index}" title="削除">×</button>
                 `;
+                
+                // 削除ボタンのイベントリスナーを直接追加
+                const removeBtn = li.querySelector('.remove-btn');
+                removeBtn.addEventListener('click', () => removeFile(index));
+                
                 fileList.appendChild(li);
             });
             initSortable();
@@ -310,6 +351,7 @@
 
         // ファイル削除
         function removeFile(index) {
+            console.log(`Removing file at index ${index}`);
             videoFiles.splice(index, 1);
             updateFileList();
             updateTotalDuration();
@@ -452,6 +494,15 @@
                 }
             }
 
+            // 現在の配列順序を最終確認
+            console.log('=== 結合処理開始前の最終確認 ===');
+            console.log('結合するファイル数:', videoFiles.length);
+            console.log('結合順序:');
+            videoFiles.forEach((file, index) => {
+                console.log(`  ${index + 1}. ${file.name}`);
+                console.log(`     パス: ${file.path}`);
+            });
+
             // 処理開始
             console.log('=== 結合処理開始 ===');
             mergeState = 'processing';
@@ -471,8 +522,14 @@
             startProgressMonitoring(fullOutputPath);
 
             try {
+                // 現在の配列順序でファイルパスを取得
                 const filePaths = videoFiles.map(f => f.path);
-                console.log('Starting merge with files:', filePaths);
+                
+                // 結合直前の最終確認ログ
+                console.log('=== FFmpegに渡すファイルパス（順序確認）===');
+                filePaths.forEach((path, index) => {
+                    console.log(`  ${index + 1}. ${path}`);
+                });
                 
                 const result = await window.electronAPI.mergeVideos(filePaths, fullOutputPath);
                 
@@ -516,30 +573,6 @@
                 }
             }
         });
-
-        // 状態とUIを完全にリセット
-        function resetMergeState() {
-            console.log('=== 状態リセット ===', 'from:', mergeState, 'to: idle');
-            mergeState = 'idle';
-            // currentOutputPathは保持（完了後のキャンセルのため）
-            mergeController = null;
-            mergeBtn.disabled = false;
-            hideProgressBanner();
-            updateMergeButton();
-        }
-
-        // 完全な初期化（修正版 - currentOutputPathを保持）
-        function fullReset() {
-            console.log('=== 完全初期化 ===');
-            console.log('リセット前のcurrentOutputPath:', currentOutputPath);
-            mergeState = 'idle';
-            // currentOutputPath = ''; // この行をコメントアウト（パスを保持）
-            mergeController = null;
-            mergeBtn.disabled = false;
-            hideProgressBanner();
-            updateMergeButton();
-            console.log('リセット後のcurrentOutputPath:', currentOutputPath);
-        }
 
         // バナー表示をリセット（ファイルサイズベース）
         function resetBannerDisplay() {
