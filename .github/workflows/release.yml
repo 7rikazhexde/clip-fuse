@@ -47,14 +47,12 @@ jobs:
 
       - name: アプリをビルド
         run: npm run build
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: GitHub Release を作成
         uses: softprops/action-gh-release@v2
         with:
           name: "Clip Fuse ${{ github.ref_name }}"
           generate_release_notes: true
-          files: dist/**/*.exe
+          files: dist/*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
