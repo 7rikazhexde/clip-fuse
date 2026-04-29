@@ -1,0 +1,60 @@
+name: リリース
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: ビルド & リリース (Windows)
+    runs-on: windows-latest
+
+    steps:
+      - name: チェックアウト
+        uses: actions/checkout@v4
+
+      - name: Node.js セットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 依存関係インストール
+        run: npm ci
+
+      - name: FFmpeg ダウンロード (Windows)
+        shell: pwsh
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          Write-Host "FFmpeg をダウンロード中..."
+          Invoke-WebRequest `
+            -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" `
+            -OutFile ffmpeg.zip
+          Expand-Archive -Path ffmpeg.zip -DestinationPath ffmpeg-extracted -Force
+          $binDir = Get-ChildItem ffmpeg-extracted -Filter "bin" -Recurse -Directory |
+            Select-Object -First 1
+          Copy-Item "$($binDir.FullName)/ffmpeg.exe"  -Destination "ffmpeg/"
+          Copy-Item "$($binDir.FullName)/ffprobe.exe" -Destination "ffmpeg/"
+          Remove-Item -Recurse -Force ffmpeg-extracted, ffmpeg.zip
+          Write-Host "FFmpeg セットアップ完了"
+
+      - name: テスト実行
+        run: npm run test:coverage
+
+      - name: アプリをビルド
+        run: npm run build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: GitHub Release を作成
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Clip Fuse ${{ github.ref_name }}"
+          generate_release_notes: true
+          files: dist/**/*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
