@@ -1,37 +1,55 @@
-# プロジェクトディレクトリにいることを確認
-Get-Location
+# Clip Fuse - 手動テスト用動画生成スクリプト
+# UIの動作確認など手動テストで使う動画ファイルを生成します。
+# 自動テスト（npm test）はこのスクリプトを使わず Vitest が動画を自動生成します。
 
-# テスト用フォルダを作成
-New-Item -ItemType Directory -Name "test-videos" -Force
-New-Item -ItemType Directory -Name "test-videos\folder1" -Force
-New-Item -ItemType Directory -Name "test-videos\folder2" -Force
-New-Item -ItemType Directory -Name "test-videos\folder3" -Force
+param(
+    [string]$OutputDir = "test-videos",
+    [switch]$Help
+)
 
-Write-Host "FFmpegでテスト動画を作成中..."
+if ($Help) {
+    Write-Host "使用方法:"
+    Write-Host "  .\scripts\create-test-videos.ps1                      # デフォルト出力先 (test-videos/)"
+    Write-Host "  .\scripts\create-test-videos.ps1 -OutputDir my-videos # 出力先を指定"
+    exit 0
+}
 
-# テスト動画1: 5秒間の赤い画面
-& "ffmpeg\ffmpeg.exe" -f lavfi -i "color=red:size=640x480:duration=5" -c:v libx264 -pix_fmt yuv420p "test-videos\video1.mp4" -y
+$ScriptDir  = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ProjectRoot = Split-Path -Parent $ScriptDir
+$FFmpegBin  = Join-Path $ProjectRoot "ffmpeg\ffmpeg.exe"
+$OutputPath = Join-Path $ProjectRoot $OutputDir
 
-# テスト動画2: 3秒間の青い画面
-& "ffmpeg\ffmpeg.exe" -f lavfi -i "color=blue:size=640x480:duration=3" -c:v libx264 -pix_fmt yuv420p "test-videos\video2.mp4" -y
+if (-not (Test-Path $FFmpegBin)) {
+    Write-Error "FFmpegが見つかりません: $FFmpegBin"
+    Write-Host "先に .\scripts\setup-ffmpeg.ps1 を実行してください。"
+    exit 1
+}
 
-# テスト動画3: 4秒間の緑の画面
-& "ffmpeg\ffmpeg.exe" -f lavfi -i "color=green:size=640x480:duration=4" -c:v libx264 -pix_fmt yuv420p "test-videos\video3.mp4" -y
+Write-Host "出力先: $OutputPath"
+New-Item -ItemType Directory -Path $OutputPath -Force | Out-Null
+New-Item -ItemType Directory -Path "$OutputPath\mixed-resolution" -Force | Out-Null
 
-# 同名ファイルテスト用：異なるフォルダに同じ名前で異なる内容
-& "ffmpeg\ffmpeg.exe" -f lavfi -i "color=yellow:size=640x480:duration=2" -c:v libx264 -pix_fmt yuv420p "test-videos\folder1\test.mp4" -y
+function New-TestVideo {
+    param([string]$Out, [string]$Color, [int]$Width, [int]$Height, [int]$Duration)
+    Write-Host "  作成中: $Out ($($Width)x$($Height), ${Duration}s)"
+    & $FFmpegBin -y `
+        -f lavfi -i "color=c=${Color}:s=${Width}x${Height}:r=30" `
+        -f lavfi -i "sine=frequency=440:sample_rate=44100" `
+        -t $Duration -c:v libx264 -c:a aac -shortest `
+        $Out 2>$null
+}
 
-& "ffmpeg\ffmpeg.exe" -f lavfi -i "color=purple:size=640x480:duration=6" -c:v libx264 -pix_fmt yuv420p "test-videos\folder2\test.mp4" -y
+Write-Host "`n--- 同一解像度 (1920x1080) ---"
+New-TestVideo "$OutputPath\clip_1080p_red.mp4"   "red"   1920 1080 5
+New-TestVideo "$OutputPath\clip_1080p_green.mp4" "green" 1920 1080 3
+New-TestVideo "$OutputPath\clip_1080p_blue.mp4"  "blue"  1920 1080 4
 
-& "ffmpeg\ffmpeg.exe" -f lavfi -i "color=orange:size=640x480:duration=3" -c:v libx264 -pix_fmt yuv420p "test-videos\folder3\test.mp4" -y
+Write-Host "`n--- 異なる解像度（解像度不一致テスト用）---"
+New-TestVideo "$OutputPath\mixed-resolution\clip_1080p.mp4" "red"   1920 1080 5
+New-TestVideo "$OutputPath\mixed-resolution\clip_720p.mp4"  "blue"  1280 720  3
+New-TestVideo "$OutputPath\mixed-resolution\clip_480p.mp4"  "green" 854  480  4
 
-# 作成されたファイルを確認
-Write-Host "`n=== 作成されたテストファイル ==="
-Get-ChildItem "test-videos" -Recurse | Format-Table Name, Directory, Length, LastWriteTime
-
-# ファイルの詳細情報
-Write-Host "`n=== ファイル詳細 ==="
-Get-ChildItem "test-videos" -Recurse -File | ForEach-Object {
-    Write-Host "$($_.FullName)"
-    & "ffmpeg\ffprobe.exe" -v quiet -print_format json -show_format "$($_.FullName)" | ConvertFrom-Json | Select-Object -ExpandProperty format | Select-Object filename, duration, size | Format-List
+Write-Host "`n=== 完了 ==="
+Get-ChildItem $OutputPath -Recurse -File | ForEach-Object {
+    Write-Host ("  " + $_.FullName.Replace($ProjectRoot + "\", ""))
 }

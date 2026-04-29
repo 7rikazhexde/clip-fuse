@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Clip Fuse</title>
+  <link rel="stylesheet" href="./src/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Clip Fuse</h1>
+      <p>動画ファイルをドラッグ&amp;ドロップまたは選択して結合</p>
+    </header>
+
+    <main>
+      <div class="add-files-section">
+        <div id="dropZone" class="drop-zone">
+          <div class="drop-zone-content">
+            <div class="drop-icon">&#128193;</div>
+            <p>動画ファイルをここにドラッグ&amp;ドロップ</p>
+            <button id="selectFilesBtn" class="btn btn-primary">ファイルを選択</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="file-list-section">
+        <div class="section-header">
+          <h3>結合するファイル (ドラッグして順序変更)</h3>
+          <div class="controls">
+            <button id="clearAllBtn" class="btn btn-secondary">全てクリア</button>
+            <span id="totalDuration" class="total-duration">総時間: 00:00:00</span>
+          </div>
+        </div>
+        <ul id="fileList" class="file-list"></ul>
+      </div>
+
+      <div class="merge-section">
+        <div class="output-section">
+          <div class="output-filename">
+            <label for="outputFilename">出力ファイル名:</label>
+            <input type="text" id="outputFilename" value="merged_video" placeholder="ファイル名を入力">
+            <select id="outputExtension" class="extension-select"></select>
+          </div>
+          <div class="output-selection">
+            <button id="selectOutputBtn" class="btn btn-secondary">保存先フォルダを選択</button>
+            <span id="outputPath" class="output-path">保存先未選択</span>
+          </div>
+          <div class="output-preview" id="outputPreview" style="display: none;">
+            <span class="preview-label">保存先:</span>
+            <span id="fullOutputPath" class="full-path"></span>
+          </div>
+        </div>
+        <button id="mergeBtn" class="btn btn-success btn-large" disabled>動画を結合</button>
+      </div>
+
+      <div id="progressBanner" class="progress-banner" style="display: none;">
+        <div class="banner-content">
+          <div class="banner-icon">&#127916;</div>
+          <div class="banner-text">
+            <div class="banner-title" id="bannerTitle">動画を結合中...</div>
+            <div class="banner-details">
+              <span id="bannerProgress">開始中...</span>
+              <span class="banner-elapsed" id="bannerElapsed">経過: 00:00</span>
+            </div>
+            <div class="banner-progress-bar">
+              <div id="bannerProgressFill" class="banner-progress-fill"></div>
+            </div>
+            <div class="banner-hint" id="bannerHint"></div>
+          </div>
+        </div>
+        <button id="cancelBtn" class="cancel-btn" title="キャンセル">&#10005;</button>
+      </div>
+
+      <div id="processingOverlay" class="processing-overlay" style="display: none;"></div>
+    </main>
+  </div>
+
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>
