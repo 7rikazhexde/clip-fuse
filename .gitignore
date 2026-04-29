@@ -3,10 +3,10 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
 
 # Electron
 dist/
+out/
 *.log
 
 # FFmpeg バイナリ (セットアップスクリプトで自動ダウンロード)
@@ -19,6 +19,7 @@ temp_list*.txt
 
 # テストファイル
 test-videos/
+tests/fixtures/
 
 # IDE
 .vscode/
@@ -44,3 +45,9 @@ desktop.ini
 .env.development.local
 .env.test.local
 .env.production.local
+
+# カバレッジレポート
+coverage/
+
+# Claude Code
+.claude/
