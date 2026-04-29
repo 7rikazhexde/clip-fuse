@@ -1,6 +1,6 @@
 {
   "name": "clip-fuse",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "ClipFuse: A simple video merging app with drag & drop and sorting",
   "main": "out/main/index.js",
   "author": "7rikazhexde <33836132+7rikazhexde@users.noreply.github.com>",
