@@ -77,8 +77,12 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+/* v8 ignore start */
+// exec_ は win32 専用コードと OS コマンドフォールバックからのみ呼ばれる
+// Linux CI では到達不能なため関数カバレッジから除外する
 function exec_(cmd: string): Promise<void> {
   return new Promise((resolve, reject) => {
     exec(cmd, { timeout: 10000 }, (err) => (err ? reject(err) : resolve()))
   })
 }
+/* v8 ignore stop */
