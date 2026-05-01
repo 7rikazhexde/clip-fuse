@@ -41,3 +41,17 @@ jobs:
           name: coverage-report
           path: coverage/
           retention-days: 14
+
+      - name: Electron アプリをビルド (E2E 用)
+        run: npm run build:electron
+
+      - name: E2E テスト
+        run: xvfb-run --auto-servernum npm run test:e2e
+
+      - name: E2E レポートをアーティファクトとして保存
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14

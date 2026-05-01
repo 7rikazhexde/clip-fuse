@@ -3,6 +3,17 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with
 code in this repository.
 
+## ブランチ運用ルール
+
+`main` への直接 push は禁止。すべての変更はブランチを作成して PR 経由でマージすること。
+
+```bash
+git checkout -b feat/your-feature   # ブランチ作成
+# 作業・コミット
+git push origin feat/your-feature   # リモートに push
+gh pr create                         # PR 作成
+```
+
 ## 開発コマンド
 
 ```bash
@@ -13,6 +24,8 @@ npm run lint           # ESLint 実行
 npm test               # Vitest テスト実行
 npm run test:coverage  # カバレッジ付きテスト（閾値: Statements/Functions/Lines 95%, Branches 70%）
 npm run test:watch     # ウォッチモード
+npm run build:electron # electron-vite ビルドのみ（E2E 実行前に必要）
+npm run test:e2e       # Playwright E2E テスト（要: build:electron 済み）
 ```
 
 特定テストファイルのみ実行:
@@ -69,6 +82,13 @@ tests/
 └── integration/    # 実際に FFmpeg バイナリを呼ぶテスト（テスト用動画を自動生成）
     └── merge.test.ts
 ```
+
+E2E テスト (`tests/e2e/`):
+
+- Playwright + `_electron` で実際の Electron アプリを起動してスモークテスト
+- `NODE_ENV=test` を渡すことで DevTools の自動起動を抑制
+- CI では `xvfb-run` 経由で実行（仮想ディスプレイが必要）
+- E2E 実行前に `npm run build:electron` でビルドが必要
 
 - カバレッジ対象ファイルは `vitest.config.ts` の `coverage.include` で明示管理
 - Win32 専用コードや OS コマンドフォールバックなど Linux CI から到達不能なパスは
