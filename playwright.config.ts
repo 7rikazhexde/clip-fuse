@@ -4,6 +4,7 @@ const isCI = !!process.env['CI']
 
 export default defineConfig({
   testDir: './tests/e2e',
+  outputDir: './playwright-output',
   timeout: 60_000,
   reporter: isCI
     ? [
