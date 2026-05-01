@@ -61,10 +61,11 @@ jobs:
           retention-days: 14
 
       - name: テスト結果を Markdown サマリーとして表示
-        uses: dorny/test-reporter@v1
+        uses: mikepenz/action-junit-report@v4
         if: always()
         with:
-          name: テスト結果レポート
-          path: test-results/*.xml
-          reporter: java-junit
-          fail-on-error: false
+          report_paths: test-results/*.xml
+          include_passed: true
+          detailed_summary: true
+          job_summary: true
+          fail_on_failure: false

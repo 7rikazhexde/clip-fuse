@@ -9,12 +9,11 @@ export default defineConfig({
     globals: true,
     testTimeout: 60000,
     reporters: isCI
-      ? [
-          'verbose',
-          'github-actions',
-          ['junit', { outputFile: './test-results/vitest-results.xml' }],
-        ]
+      ? ['verbose', 'github-actions', 'junit']
       : ['verbose'],
+    outputFile: isCI
+      ? { junit: './test-results/vitest-results.xml' }
+      : undefined,
     coverage: {
       provider: 'v8',
       include: [
