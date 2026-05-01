@@ -95,6 +95,22 @@ E2E テスト (`tests/e2e/`):
   `/* v8 ignore start/stop */` で除外
 - `/* v8 ignore next */` は esbuild との相性問題があるため使用しない（`start/stop` を使う）
 
+## テスト結果レポート
+
+CI では JUnit XML 形式でテスト結果を出力し、`dorny/test-reporter` が GitHub Actions の
+ジョブサマリー（Markdown）および PR アノテーションとして表示する。
+
+| レポーター | ローカル | CI |
+| --- | --- | --- |
+| Vitest | `verbose` のみ | `verbose` + `github-actions` + `junit` |
+| Playwright | `list` + `html` | `list` + `html` + `github` + `junit` |
+
+生成ファイル（自動生成・Git 管理外）:
+
+- `test-results/vitest-results.xml` — Vitest JUnit XML
+- `test-results/playwright-results.xml` — Playwright JUnit XML
+- `playwright-report/` — Playwright HTML レポート
+
 ## CI / リリース
 
 - **CI** (`ci.yml`): `main` への push と全 PR でテスト実行。`concurrency` で重複実行をキャンセル

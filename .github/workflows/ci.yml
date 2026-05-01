@@ -10,6 +10,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  checks: write
+  pull-requests: write
+
 jobs:
   test:
     name: テスト & カバレッジ
@@ -55,3 +59,13 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 14
+
+      - name: テスト結果を Markdown サマリーとして表示
+        uses: mikepenz/action-junit-report@v4
+        if: always()
+        with:
+          report_paths: test-results/*.xml
+          include_passed: true
+          detailed_summary: true
+          job_summary: true
+          fail_on_failure: false

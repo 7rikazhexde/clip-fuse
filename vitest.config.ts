@@ -1,11 +1,19 @@
 import { defineConfig } from 'vitest/config'
 
+const isCI = !!process.env['CI']
+
 export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/**/*.test.ts'],
     globals: true,
     testTimeout: 60000,
+    reporters: isCI
+      ? ['verbose', 'github-actions', 'junit']
+      : ['verbose'],
+    outputFile: isCI
+      ? { junit: './test-results/vitest-results.xml' }
+      : undefined,
     coverage: {
       provider: 'v8',
       include: [
