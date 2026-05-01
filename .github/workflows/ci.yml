@@ -10,6 +10,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  checks: write
+  pull-requests: write
+
 jobs:
   test:
     name: テスト & カバレッジ
@@ -55,3 +59,12 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 14
+
+      - name: テスト結果を Markdown サマリーとして表示
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: テスト結果レポート
+          path: test-results/*.xml
+          reporter: java-junit
+          fail-on-error: false
