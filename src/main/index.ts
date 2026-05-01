@@ -37,7 +37,7 @@ function createWindow(): void {
 
   mainWindow.once('ready-to-show', () => mainWindow.show())
 
-  if (!app.isPackaged) {
+  if (!app.isPackaged && process.env['NODE_ENV'] !== 'test') {
     mainWindow.webContents.openDevTools()
   }
 }

@@ -49,5 +49,9 @@ desktop.ini
 # カバレッジレポート
 coverage/
 
+# Playwright
+playwright-report/
+test-results/
+
 # Claude Code
 .claude/
