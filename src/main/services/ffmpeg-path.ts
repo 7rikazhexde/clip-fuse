@@ -4,7 +4,9 @@ import fs from 'fs'
 import ffmpeg from 'fluent-ffmpeg'
 import log from 'electron-log'
 
+/* v8 ignore start */
 const EXE = process.platform === 'win32' ? '.exe' : ''
+/* v8 ignore stop */
 
 function resolveBinaries(): { ffmpegPath: string; ffprobePath: string } {
   const base = app.isPackaged

@@ -11,6 +11,7 @@ export default defineConfig({
       include: [
         'src/main/services/ffmpeg-merge.ts',
         'src/main/services/ffmpeg-probe.ts',
+        'src/main/services/ffmpeg-path.ts',
         'src/main/services/file-deleter.ts',
         'src/renderer/src/format.ts'
       ],
