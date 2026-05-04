@@ -37,7 +37,7 @@
     "electron": "^41.4.0",
     "electron-builder": "^26.8.1",
     "electron-vite": "^5.0.0",
-    "eslint": "^10.2.1",
+    "eslint": "^10.3.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
     "markdownlint-cli": "^0.48.0",
