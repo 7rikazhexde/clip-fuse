@@ -77,7 +77,8 @@
         "AppImage",
         "deb"
       ],
-      "category": "Utility"
+      "category": "Utility",
+      "icon": "icon.png"
     },
     "nsis": {
       "oneClick": false,
