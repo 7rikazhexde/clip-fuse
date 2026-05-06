@@ -35,10 +35,25 @@ npx vitest run tests/unit/ffmpeg-probe.test.ts
 npx vitest run tests/integration/merge.test.ts
 ```
 
-FFmpeg セットアップ（開発時 / Windows）:
+FFmpeg セットアップ（開発時）:
 
 ```powershell
+# Windows
 .\scripts\setup-ffmpeg.ps1   # ffmpeg/ ディレクトリにバイナリを配置
+```
+
+```bash
+# Linux / WSL2 (Ubuntu)
+bash scripts/setup-ffmpeg.sh   # apt で FFmpeg をインストールし ffmpeg/ にシンボリックリンクを作成
+```
+
+WSL2 で E2E テストや `npm run dev` を実行する場合は、ディスプレイが必要です:
+
+```bash
+# WSLg (Windows 11) を使用している場合はそのまま動作します。
+# WSLg が使えない環境では Xvfb を使ってください:
+sudo apt-get install -y xvfb
+xvfb-run --auto-servernum npm run test:e2e
 ```
 
 ## アーキテクチャ
