@@ -6,8 +6,9 @@ import ffmpeg from 'fluent-ffmpeg'
 import { probeVideo } from '../../src/main/services/ffmpeg-probe.js'
 
 const FFMPEG_DIR = path.join(process.cwd(), 'ffmpeg')
-const FFMPEG_BIN = path.join(FFMPEG_DIR, 'ffmpeg.exe')
-const FFPROBE_BIN = path.join(FFMPEG_DIR, 'ffprobe.exe')
+const EXE = process.platform === 'win32' ? '.exe' : ''
+const FFMPEG_BIN = path.join(FFMPEG_DIR, `ffmpeg${EXE}`)
+const FFPROBE_BIN = path.join(FFMPEG_DIR, `ffprobe${EXE}`)
 const TEST_DIR = path.join(process.cwd(), 'tests', 'fixtures')
 
 function setupBinaries(): void {
