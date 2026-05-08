@@ -61,6 +61,7 @@ main {
 .drop-zone-content .drop-icon {
     font-size: 3em;
     margin-bottom: 15px;
+    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
 }
 
 .drop-zone-content p {
@@ -424,6 +425,7 @@ main {
 .banner-icon {
     font-size: 2em;
     animation: pulse 2s infinite;
+    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
 }
 
 @keyframes pulse {

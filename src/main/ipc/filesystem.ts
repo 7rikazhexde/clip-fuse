@@ -1,4 +1,6 @@
 import { ipcMain, shell } from 'electron'
+import { exec, execFile } from 'child_process'
+import path from 'path'
 import fs from 'fs'
 import log from 'electron-log'
 import { forceDelete } from '../services/file-deleter.js'
@@ -23,6 +25,23 @@ export function registerFilesystemHandlers(): void {
   })
 
   ipcMain.handle(IPC.SHOW_IN_FOLDER, (_event, filePath: string) => {
-    shell.showItemInFolder(filePath)
+    /* v8 ignore start */
+    if (process.platform !== 'linux') {
+      shell.showItemInFolder(filePath)
+      return
+    }
+    const dir = path.dirname(filePath)
+    exec(`wslpath -w "${dir}"`, (err, windowsPath) => {
+      if (!err && windowsPath.trim()) {
+        execFile('explorer.exe', [windowsPath.trim()], (execErr) => {
+          if (execErr) log.error('explorer.exe error:', execErr)
+        })
+      } else {
+        execFile('xdg-open', [dir], (execErr) => {
+          if (execErr) log.error('xdg-open error:', execErr)
+        })
+      }
+    })
+    /* v8 ignore stop */
   })
 }
