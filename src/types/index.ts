@@ -56,6 +56,20 @@ export interface FfmpegTestResult {
   ffmpegExists?: boolean
 }
 
+export type ElectronAPI = {
+  selectFiles: () => Promise<string[]>
+  selectOutputFolder: () => Promise<string | null>
+  getVideoInfo: (filePath: string) => Promise<VideoInfo>
+  getFileSize: (filePath: string) => Promise<number>
+  mergeVideos: (options: MergeOptions) => Promise<void>
+  cancelMerge: (outputPath: string) => Promise<DeleteResult>
+  forceDeleteFile: (filePath: string) => Promise<DeleteResult>
+  checkFileExists: (filePath: string) => Promise<boolean>
+  showInFolder: (filePath: string) => Promise<void>
+  testFfmpeg: () => Promise<FfmpegTestResult>
+  onMergeProgress: (callback: (progress: MergeProgress) => void) => () => void
+}
+
 // レンダラー側のファイルエントリ
 export interface VideoFile {
   id: number

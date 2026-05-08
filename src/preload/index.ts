@@ -1,20 +1,8 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC } from '../types/index.js'
-import type { MergeOptions, MergeProgress, VideoInfo, DeleteResult, FfmpegTestResult } from '../types/index.js'
+import type { ElectronAPI, MergeProgress } from '../types/index.js'
 
-export type ElectronAPI = {
-  selectFiles: () => Promise<string[]>
-  selectOutputFolder: () => Promise<string | null>
-  getVideoInfo: (filePath: string) => Promise<VideoInfo>
-  getFileSize: (filePath: string) => Promise<number>
-  mergeVideos: (options: MergeOptions) => Promise<void>
-  cancelMerge: (outputPath: string) => Promise<DeleteResult>
-  forceDeleteFile: (filePath: string) => Promise<DeleteResult>
-  checkFileExists: (filePath: string) => Promise<boolean>
-  showInFolder: (filePath: string) => Promise<void>
-  testFfmpeg: () => Promise<FfmpegTestResult>
-  onMergeProgress: (callback: (progress: MergeProgress) => void) => () => void
-}
+export type { ElectronAPI }
 
 const api: ElectronAPI = {
   selectFiles: () => ipcRenderer.invoke(IPC.SELECT_FILES),
