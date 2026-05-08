@@ -1,4 +1,5 @@
 import { app, BrowserWindow } from 'electron'
+import { execSync } from 'child_process'
 import path from 'path'
 import log from 'electron-log'
 import { setupFfmpegPaths } from './services/ffmpeg-path.js'
@@ -6,6 +7,12 @@ import { buildMenu } from './menu.js'
 import { registerDialogHandlers } from './ipc/dialog.js'
 import { registerFilesystemHandlers } from './ipc/filesystem.js'
 import { registerFfmpegHandlers } from './ipc/ffmpeg.js'
+
+/* v8 ignore start */
+if (process.platform === 'win32') {
+  try { execSync('chcp 65001', { stdio: 'ignore' }) } catch { /* ignore */ }
+}
+/* v8 ignore stop */
 
 log.initialize()
 log.info('App starting...')
