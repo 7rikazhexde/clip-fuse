@@ -1,6 +1,6 @@
 {
   "name": "clip-fuse",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "ClipFuse: A simple video merging app with drag & drop and sorting",
   "main": "out/main/index.js",
   "author": "7rikazhexde <33836132+7rikazhexde@users.noreply.github.com>",
@@ -81,7 +81,11 @@
       "icon": "icon.png"
     },
     "deb": {
-      "depends": ["libnotify4", "xdg-utils", "fonts-noto-color-emoji"]
+      "depends": [
+        "libnotify4",
+        "xdg-utils",
+        "fonts-noto-color-emoji"
+      ]
     },
     "nsis": {
       "oneClick": false,
