@@ -8,11 +8,15 @@ import {
   showSuccessModal,
   showDeleteErrorModal
 } from './modal.js'
-import type { ElectronAPI } from '../../preload/index.js'
+import type { ElectronAPI } from '../../types/index.js'
+import type { MergeState } from './store.js'
 
 declare global {
   interface Window {
     electronAPI: ElectronAPI
+  }
+  interface File {
+    readonly path: string
   }
 }
 
@@ -391,7 +395,7 @@ mergeBtn.addEventListener('click', async () => {
   } catch (err: unknown) {
     stopProgressMonitor()
     hideBanner()
-    if (state.mergeState !== 'cancelling') {
+    if ((state.mergeState as MergeState) !== 'cancelling') {
       const msg = err instanceof Error ? err.message : '不明なエラー'
       alert('エラーが発生しました: ' + msg)
     }

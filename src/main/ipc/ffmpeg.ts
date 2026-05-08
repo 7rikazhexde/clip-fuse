@@ -1,6 +1,5 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import { exec } from 'child_process'
-import log from 'electron-log'
 import { probeVideo } from '../services/ffmpeg-probe.js'
 import { mergeVideos } from '../services/ffmpeg-merge.js'
 import { forceDelete } from '../services/file-deleter.js'
