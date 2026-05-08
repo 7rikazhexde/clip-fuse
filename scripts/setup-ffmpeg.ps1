@@ -47,8 +47,8 @@ function Get-FFmpegConfig {
         
         # デバッグ情報表示
         Write-Host "設定ファイル読み込み完了: $ConfigFile" -ForegroundColor Gray
-        Write-Host "推奨バージョン: $($config.recommendedVersion)" -ForegroundColor Gray
-        Write-Host "利用可能なバージョン: $($config.supportedVersions.PSObject.Properties.Name -join ', ')" -ForegroundColor Gray
+        Write-Host "推奨バージョン: $($config.windows.recommendedVersion)" -ForegroundColor Gray
+        Write-Host "利用可能なバージョン: $($config.windows.supportedVersions.PSObject.Properties.Name -join ', ')" -ForegroundColor Gray
         Write-Host ""
         
         return $config
@@ -186,34 +186,34 @@ function Main {
     $config = Get-FFmpegConfig
     
     # バージョン決定
-    $targetVersion = if ($Version -and $Version -ne "") { $Version } else { $config.recommendedVersion }
-    
+    $targetVersion = if ($Version -and $Version -ne "") { $Version } else { $config.windows.recommendedVersion }
+
     # PowerShell 5.1互換のプロパティアクセス
     $downloadUrl = $null
     switch ($targetVersion) {
-        "7.1.1" { $downloadUrl = $config.supportedVersions."7.1.1".url }
-        "7.0.2" { $downloadUrl = $config.supportedVersions."7.0.2".url }
-        default { 
+        "7.1.1" { $downloadUrl = $config.windows.supportedVersions."7.1.1".url }
+        "7.0.2" { $downloadUrl = $config.windows.supportedVersions."7.0.2".url }
+        default {
             # 将来の拡張用：動的プロパティアクセス
-            $downloadUrl = $config.supportedVersions.PSObject.Properties | Where-Object { $_.Name -eq $targetVersion } | Select-Object -ExpandProperty Value | Select-Object -ExpandProperty url -First 1
+            $downloadUrl = $config.windows.supportedVersions.PSObject.Properties | Where-Object { $_.Name -eq $targetVersion } | Select-Object -ExpandProperty Value | Select-Object -ExpandProperty url -First 1
         }
     }
-    
+
     if (-not $downloadUrl) {
         Write-Host ""
         Write-Error "バージョン $targetVersion の ダウンロードURLが見つかりません"
         Write-Host ""
         Write-Host "📋 デバッグ情報:" -ForegroundColor Yellow
-        Write-Host "  推奨バージョン: $($config.recommendedVersion)" -ForegroundColor Gray
+        Write-Host "  推奨バージョン: $($config.windows.recommendedVersion)" -ForegroundColor Gray
         Write-Host "  指定バージョン: $targetVersion" -ForegroundColor Gray
         Write-Host "  利用可能なバージョン:" -ForegroundColor Gray
-        $config.supportedVersions.PSObject.Properties | ForEach-Object {
+        $config.windows.supportedVersions.PSObject.Properties | ForEach-Object {
             Write-Host "    - $($_.Name): $($_.Value.url.Substring(0, [Math]::Min(50, $_.Value.url.Length)))..." -ForegroundColor Gray
         }
         Write-Host ""
         Write-Host "💡 解決方法:" -ForegroundColor Cyan
         Write-Host "  利用可能なバージョンのいずれかを指定してください:" -ForegroundColor White
-        $config.supportedVersions.PSObject.Properties.Name | ForEach-Object {
+        $config.windows.supportedVersions.PSObject.Properties.Name | ForEach-Object {
             Write-Host "    .\setup-ffmpeg.ps1 -Version $_" -ForegroundColor Gray
         }
         exit 1
@@ -225,11 +225,11 @@ function Main {
     # バージョンノート取得
     $versionNote = $null
     switch ($targetVersion) {
-        "7.1.1" { $versionNote = $config.supportedVersions."7.1.1".description }
-        "7.0.2" { $versionNote = $config.supportedVersions."7.0.2".description }
-        default { 
+        "7.1.1" { $versionNote = $config.windows.supportedVersions."7.1.1".description }
+        "7.0.2" { $versionNote = $config.windows.supportedVersions."7.0.2".description }
+        default {
             # 将来の拡張用
-            $versionNote = $config.supportedVersions.PSObject.Properties | Where-Object { $_.Name -eq $targetVersion } | Select-Object -ExpandProperty Value | Select-Object -ExpandProperty description -First 1
+            $versionNote = $config.windows.supportedVersions.PSObject.Properties | Where-Object { $_.Name -eq $targetVersion } | Select-Object -ExpandProperty Value | Select-Object -ExpandProperty description -First 1
         }
     }
     
@@ -401,7 +401,7 @@ function Main {
     
     # 検証
     Write-Host ""
-    if ($Verify -or $config.alwaysVerify) {
+    if ($Verify -or $config.windows.alwaysVerify) {
         Write-Host "🔍 動作確認を実行中..." -ForegroundColor Blue
         Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Gray
         
@@ -431,11 +431,11 @@ function Main {
     # バージョン特有の情報表示
     $finalVersionNote = $null
     switch ($targetVersion) {
-        "7.1.1" { $finalVersionNote = $config.supportedVersions."7.1.1".description }
-        "7.0.2" { $finalVersionNote = $config.supportedVersions."7.0.2".description }
-        default { 
+        "7.1.1" { $finalVersionNote = $config.windows.supportedVersions."7.1.1".description }
+        "7.0.2" { $finalVersionNote = $config.windows.supportedVersions."7.0.2".description }
+        default {
             # 将来の拡張用
-            $finalVersionNote = $config.supportedVersions.PSObject.Properties | Where-Object { $_.Name -eq $targetVersion } | Select-Object -ExpandProperty Value | Select-Object -ExpandProperty description -First 1
+            $finalVersionNote = $config.windows.supportedVersions.PSObject.Properties | Where-Object { $_.Name -eq $targetVersion } | Select-Object -ExpandProperty Value | Select-Object -ExpandProperty description -First 1
         }
     }
     

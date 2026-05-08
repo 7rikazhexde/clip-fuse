@@ -14,7 +14,7 @@ export function probeVideo(filePath: string): Promise<VideoInfo> {
     try {
       fileSize = fs.statSync(filePath).size
     } catch (e) {
-      log.warn('ファイルサイズ取得失敗:', e)
+      log.warn('Failed to get file size:', e)
     }
 
     ffmpeg.ffprobe(filePath, (err, metadata) => {

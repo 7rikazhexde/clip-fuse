@@ -22,7 +22,8 @@ test-videos/
 tests/fixtures/
 
 # IDE
-.vscode/
+.vscode/*
+!.vscode/settings.json
 .idea/
 *.swp
 *.swo

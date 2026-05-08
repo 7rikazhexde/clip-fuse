@@ -8,7 +8,6 @@ import {
   showSuccessModal,
   showDeleteErrorModal
 } from './modal.js'
-import type { VideoFile } from '../../types/index.js'
 import type { ElectronAPI } from '../../preload/index.js'
 
 declare global {
@@ -144,11 +143,15 @@ function updateSummary(): void {
   totalDurationSpan.textContent = `総時間: ${formatDuration(getTotalDuration())} (${formatFileSize(state.totalInputSize)})`
 }
 
+function joinPath(dir: string, file: string): string {
+  return dir + (dir.includes('\\') ? '\\' : '/') + file
+}
+
 function updateOutputPreview(): void {
   const name = outputFilenameInput.value.trim()
   if (state.outputDir && name) {
     const filename = sanitizeFilename(name) + state.outputExtension
-    const full = state.outputDir + '\\' + filename
+    const full = joinPath(state.outputDir, filename)
     fullOutputPathEl.textContent = full
     outputPreview.style.display = 'block'
   } else {
@@ -323,7 +326,7 @@ mergeBtn.addEventListener('click', async () => {
   if (state.videoFiles.length < 2 || !state.outputDir || !outputFilenameInput.value.trim()) return
 
   const filename = sanitizeFilename(outputFilenameInput.value.trim()) + state.outputExtension
-  let outputPath = state.outputDir + '\\' + filename
+  let outputPath = joinPath(state.outputDir, filename)
 
   // 既存ファイルチェック
   if (await api.checkFileExists(outputPath)) {
@@ -332,7 +335,7 @@ mergeBtn.addEventListener('click', async () => {
     if (choice === 'rename') {
       const newName = await generateUniqueName(state.outputDir, outputFilenameInput.value.trim())
       outputFilenameInput.value = newName
-      outputPath = state.outputDir + '\\' + sanitizeFilename(newName) + state.outputExtension
+      outputPath = joinPath(state.outputDir, sanitizeFilename(newName) + state.outputExtension)
       updateOutputPreview()
     }
   }
@@ -425,7 +428,7 @@ cancelBtn.addEventListener('click', async () => {
 async function generateUniqueName(dir: string, baseName: string): Promise<string> {
   for (let i = 1; i <= 1000; i++) {
     const candidate = `${baseName} (${i})`
-    const fullPath = dir + '\\' + sanitizeFilename(candidate) + state.outputExtension
+    const fullPath = joinPath(dir, sanitizeFilename(candidate) + state.outputExtension)
     if (!(await api.checkFileExists(fullPath))) return candidate
   }
   return `${baseName} (${Date.now()})`

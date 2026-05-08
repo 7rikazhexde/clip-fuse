@@ -8,8 +8,9 @@ import { mergeVideos } from '../../src/main/services/ffmpeg-merge.js'
 import { probeVideo } from '../../src/main/services/ffmpeg-probe.js'
 
 const FFMPEG_DIR = path.join(process.cwd(), 'ffmpeg')
-const FFMPEG_BIN = path.join(FFMPEG_DIR, 'ffmpeg.exe')
-const FFPROBE_BIN = path.join(FFMPEG_DIR, 'ffprobe.exe')
+const EXE = process.platform === 'win32' ? '.exe' : ''
+const FFMPEG_BIN = path.join(FFMPEG_DIR, `ffmpeg${EXE}`)
+const FFPROBE_BIN = path.join(FFMPEG_DIR, `ffprobe${EXE}`)
 const FIXTURES = path.join(process.cwd(), 'tests', 'fixtures')
 const TMP_OUT = path.join(os.tmpdir(), 'clip-fuse-merge-test')
 

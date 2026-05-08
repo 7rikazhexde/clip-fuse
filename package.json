@@ -77,7 +77,11 @@
         "AppImage",
         "deb"
       ],
-      "category": "Utility"
+      "category": "Utility",
+      "icon": "icon.png"
+    },
+    "deb": {
+      "depends": ["libnotify4", "xdg-utils", "fonts-noto-color-emoji"]
     },
     "nsis": {
       "oneClick": false,
