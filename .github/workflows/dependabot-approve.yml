@@ -1,0 +1,112 @@
+name: Dependabot 自動承認
+
+# workflow_run を使う理由:
+# pull_request イベントは Dependabot PR では書き込み権限が制限されるため、
+# CI 完了後に別ワークフローとして実行することで安全に承認できる。
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  approve:
+    name: CI 通過後に Dependabot PR を承認
+    runs-on: ubuntu-latest
+    if: |
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      startsWith(github.event.workflow_run.head_branch, 'dependabot/')
+
+    steps:
+      - name: Dependabot PR を検索・承認
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branch = context.payload.workflow_run.head_branch;
+
+            // ブランチに対応するオープン中の PR を取得
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: `${context.repo.owner}:${branch}`,
+            });
+
+            if (prs.length === 0) {
+              core.info(`ブランチ ${branch} に対応するオープン中の PR が見つかりません`);
+              return;
+            }
+
+            const pr = prs[0];
+            core.info(`対象 PR: #${pr.number} "${pr.title}"`);
+
+            // 作成者が dependabot[bot] であることを確認
+            if (pr.user.login !== 'dependabot[bot]') {
+              core.info(`PR #${pr.number} は Dependabot の PR ではありません (作成者: ${pr.user.login})`);
+              return;
+            }
+
+            // PR タイトルからメジャーバージョン更新かどうかを判定
+            // タイトル形式: "chore(deps): Bump package from X.Y.Z to A.B.C"
+            const versionMatch = pr.title.match(/from (\d+)\.\d+\.\d+ to (\d+)\.\d+\.\d+/);
+            const isMajorUpdate = versionMatch && versionMatch[1] !== versionMatch[2];
+
+            if (isMajorUpdate) {
+              // メジャー更新は破壊的変更の可能性があるためコメントのみ
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+              });
+
+              const alreadyCommented = comments.some(c =>
+                c.user.login === 'github-actions[bot]' &&
+                c.body.includes('メジャーバージョン更新')
+              );
+
+              if (!alreadyCommented) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: [
+                    '## CI 通過 — メジャーバージョン更新のため手動レビューが必要です',
+                    '',
+                    'CI がすべて通過しましたが、**メジャーバージョン更新**は破壊的変更を含む可能性があるため自動承認しません。',
+                    '',
+                    '変更内容を確認し、問題がなければ手動で承認・マージしてください。',
+                  ].join('\n'),
+                });
+                core.info(`PR #${pr.number} はメジャー更新のためコメントを追加しました`);
+              }
+              return;
+            }
+
+            // patch / minor 更新: 既に bot による承認があるかチェック
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+            });
+
+            const alreadyApproved = reviews.some(r =>
+              r.state === 'APPROVED' && r.user.login === 'github-actions[bot]'
+            );
+
+            if (alreadyApproved) {
+              core.info(`PR #${pr.number} は既に承認済みです`);
+              return;
+            }
+
+            await github.rest.pulls.createReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              event: 'APPROVE',
+              body: 'CI がすべて通過したため自動承認しました。内容を確認の上、手動でマージしてください。',
+            });
+
+            core.info(`PR #${pr.number} を承認しました`);
