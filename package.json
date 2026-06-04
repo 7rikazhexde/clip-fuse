@@ -29,7 +29,7 @@
   "devDependencies": {
     "@playwright/test": "^1.60.0",
     "@types/fluent-ffmpeg": "^2.1.28",
-    "@types/node": "^25.8.0",
+    "@types/node": "^25.9.1",
     "@types/sortablejs": "^1.15.9",
     "@typescript-eslint/eslint-plugin": "^8.59.4",
     "@typescript-eslint/parser": "^8.59.4",
