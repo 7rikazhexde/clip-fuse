@@ -1,0 +1,56 @@
+name: Dependabot ブランチ更新
+
+# main に push されるたびに（他の PR マージ後など）
+# オープン中の Dependabot PR のブランチを GitHub API で最新化する。
+# @dependabot rebase コメントは github-actions[bot] には反応しないため、
+# pulls.updateBranch API（UI の「Update branch」ボタン相当）を使用する。
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    name: Dependabot PR のブランチを更新
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: オープン中の Dependabot PR のブランチを更新
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+            });
+
+            const dependabotPRs = prs.filter(pr => pr.user.login === 'dependabot[bot]');
+
+            if (dependabotPRs.length === 0) {
+              core.info('オープン中の Dependabot PR はありません');
+              return;
+            }
+
+            for (const pr of dependabotPRs) {
+              try {
+                core.info(`PR #${pr.number} を更新中: ${pr.title}`);
+                await github.rest.pulls.updateBranch({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number,
+                });
+                core.info(`PR #${pr.number} の更新完了`);
+              } catch (error) {
+                if (error.status === 422) {
+                  core.info(`PR #${pr.number} はすでに最新です`);
+                } else {
+                  core.warning(`PR #${pr.number} の更新中にエラー: ${error.message}`);
+                }
+              }
+            }
