@@ -14,14 +14,13 @@ updates:
     groups:
       npm-dev-dependencies:
         dependency-type: "development"
-        update-types:
-          - "minor"
-          - "patch"
       npm-production-dependencies:
         dependency-type: "production"
-        update-types:
-          - "minor"
-          - "patch"
+    ignore:
+      # @typescript-eslint does not yet support TypeScript 7.x
+      # (peerDependency: "typescript": ">=4.8.4 <6.1.0" as of 8.64.0)
+      - dependency-name: "typescript"
+        versions: [">=7.0.0"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -35,6 +34,5 @@ updates:
       - "github-actions"
     groups:
       github-actions:
-        update-types:
-          - "minor"
-          - "patch"
+        patterns:
+          - "*"
