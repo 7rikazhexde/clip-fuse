@@ -27,9 +27,9 @@
     "sortablejs": "^1.15.7"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.0",
+    "@playwright/test": "^1.62.1",
     "@types/fluent-ffmpeg": "^2.1.28",
-    "@types/node": "^26.1.1",
+    "@types/node": "^26.1.2",
     "@types/sortablejs": "^1.15.9",
     "@typescript-eslint/eslint-plugin": "^8.65.0",
     "@typescript-eslint/parser": "^8.59.4",
