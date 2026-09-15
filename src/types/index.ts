@@ -59,6 +59,7 @@ export interface FfmpegTestResult {
 export type ElectronAPI = {
   selectFiles: () => Promise<string[]>
   selectOutputFolder: () => Promise<string | null>
+  getPathForFile: (file: File) => string
   getVideoInfo: (filePath: string) => Promise<VideoInfo>
   getFileSize: (filePath: string) => Promise<number>
   mergeVideos: (options: MergeOptions) => Promise<void>
