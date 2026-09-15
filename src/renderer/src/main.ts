@@ -15,9 +15,6 @@ declare global {
   interface Window {
     electronAPI: ElectronAPI
   }
-  interface File {
-    readonly path: string
-  }
 }
 
 const api = window.electronAPI
@@ -200,7 +197,7 @@ dropZone.addEventListener('drop', (e) => {
   const files = Array.from(e.dataTransfer!.files).filter(
     (f) => f.type.startsWith('video/') || VIDEO_EXT_RE.test(f.name)
   )
-  if (files.length > 0) addFiles(files.map((f) => f.path))
+  if (files.length > 0) addFiles(files.map((f) => api.getPathForFile(f)))
 })
 
 selectFilesBtn.addEventListener('click', async () => {
