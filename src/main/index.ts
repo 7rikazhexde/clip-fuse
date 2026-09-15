@@ -16,12 +16,18 @@ app.commandLine.appendSwitch('--ignore-gpu-blocklist')
 
 let mainWindow: BrowserWindow
 
+function getIconPath(): string {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'icon.ico')
+    : path.join(app.getAppPath(), 'icon.ico')
+}
+
 function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1000,
     height: 700,
     show: false,
-    icon: path.join(app.getAppPath(), 'icon.ico'),
+    icon: getIconPath(),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

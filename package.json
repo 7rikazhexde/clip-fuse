@@ -61,6 +61,10 @@
       {
         "from": "ffmpeg",
         "to": "ffmpeg"
+      },
+      {
+        "from": "icon.ico",
+        "to": "icon.ico"
       }
     ],
     "asar": true,
