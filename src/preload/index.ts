@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { IPC } from '../types/index.js'
 import type { ElectronAPI, MergeProgress } from '../types/index.js'
 
@@ -7,6 +7,7 @@ export type { ElectronAPI }
 const api: ElectronAPI = {
   selectFiles: () => ipcRenderer.invoke(IPC.SELECT_FILES),
   selectOutputFolder: () => ipcRenderer.invoke(IPC.SELECT_OUTPUT),
+  getPathForFile: (file) => webUtils.getPathForFile(file),
   getVideoInfo: (filePath) => ipcRenderer.invoke(IPC.GET_VIDEO_INFO, filePath),
   getFileSize: (filePath) => ipcRenderer.invoke(IPC.GET_FILE_SIZE, filePath),
   mergeVideos: (options) => ipcRenderer.invoke(IPC.MERGE_VIDEOS, options),
